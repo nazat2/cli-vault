@@ -16,6 +16,9 @@ export default function MobileDrawer({
   onModeChange,
   filter,
   onFilter,
+  categories,
+  categoryFilter,
+  onCategoryFilter,
   onAdd,
   showToast,
 }) {
@@ -74,6 +77,20 @@ export default function MobileDrawer({
               ? "Data tersimpan cuma di browser ini — cocok buat coba-coba dulu sebelum setup Supabase."
               : "Data tersimpan di Supabase — sinkron otomatis di semua device."}
           </p>
+
+          <p className="drawer-label">KATEGORI</p>
+          <select
+            className="category-select category-select-mobile"
+            value={categoryFilter}
+            onChange={(e) => onCategoryFilter(e.target.value)}
+          >
+            <option value="all">SEMUA KATEGORI</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c.toUpperCase()}
+              </option>
+            ))}
+          </select>
 
           <p className="drawer-label">FILTER FOLDER</p>
           <div className="filter-group drawer-filter">

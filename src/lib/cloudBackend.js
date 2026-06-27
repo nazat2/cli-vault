@@ -12,6 +12,7 @@ function mapRow(row) {
     id: row.id,
     name: row.name,
     code: row.code || "",
+    category: row.category || "Umum",
     images: row.images || [],
     createdAt: row.created_at,
   };
@@ -82,7 +83,7 @@ export async function uploadImages(folderId, files) {
 /**
  * Buat folder baru: upload foto dulu (kalau ada), lalu insert baris ke tabel folders.
  */
-export async function createFolder({ name, code, files }) {
+export async function createFolder({ name, code, files, category }) {
   const id = uid();
 
   let images = [];
@@ -94,6 +95,7 @@ export async function createFolder({ name, code, files }) {
     id,
     name,
     code: code || "",
+    category: category?.trim() || "Umum",
     images,
   });
   if (error) throw error;
@@ -117,10 +119,10 @@ export async function deleteFolder(folder) {
 }
 
 /**
- * Update folder yang sudah ada: nama, kode, foto baru (di-upload), dan foto lama
+ * Update folder yang sudah ada: nama, kode, kategori, foto baru (di-upload), dan foto lama
  * yang dihapus user (dihapus juga dari Storage).
  */
-export async function updateFolder(id, { name, code, newFiles, keepImages, removedPaths }) {
+export async function updateFolder(id, { name, code, category, newFiles, keepImages, removedPaths }) {
   let images = keepImages ? [...keepImages] : [];
 
   if (removedPaths && removedPaths.length) {
@@ -134,7 +136,7 @@ export async function updateFolder(id, { name, code, newFiles, keepImages, remov
 
   const { error } = await supabase
     .from(TABLE)
-    .update({ name, code: code || "", images })
+    .update({ name, code: code || "", category: category?.trim() || "Umum", images })
     .eq("id", id);
   if (error) throw error;
 }

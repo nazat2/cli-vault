@@ -63,9 +63,12 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
             </button>
           </div>
           <div className="modal-head-actions">
-            <span className={`mode-pill ${mode === "cloud" ? "is-cloud" : "is-local"}`}>
-              {mode === "cloud" ? "☁ CLOUD" : "💾 LOCAL"}
-            </span>
+            <div className="modal-head-badges">
+              <span className="category-badge">{folder.category || "Umum"}</span>
+              <span className={`mode-pill ${mode === "cloud" ? "is-cloud" : "is-local"}`}>
+                {mode === "cloud" ? "☁ CLOUD" : "💾 LOCAL"}
+              </span>
+            </div>
             <div className="modal-head-buttons">
               <button className="btn-icon" title="Edit folder" onClick={() => onEdit(folder)}>
                 ✏️

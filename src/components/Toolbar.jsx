@@ -6,7 +6,17 @@ const FILTERS = [
   { key: "image", label: "FOTO" },
 ];
 
-export default function Toolbar({ search, onSearch, filter, onFilter, mode, onModeChange }) {
+export default function Toolbar({
+  search,
+  onSearch,
+  filter,
+  onFilter,
+  mode,
+  onModeChange,
+  categories,
+  categoryFilter,
+  onCategoryFilter,
+}) {
   return (
     <section className="toolbar">
       <input
@@ -18,6 +28,19 @@ export default function Toolbar({ search, onSearch, filter, onFilter, mode, onMo
       />
 
       <div className="toolbar-right desktop-only">
+        <select
+          className="category-select"
+          value={categoryFilter}
+          onChange={(e) => onCategoryFilter(e.target.value)}
+        >
+          <option value="all">SEMUA KATEGORI</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c.toUpperCase()}
+            </option>
+          ))}
+        </select>
+
         <div className="filter-group">
           {FILTERS.map((f) => (
             <button

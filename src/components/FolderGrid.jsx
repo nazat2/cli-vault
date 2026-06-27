@@ -1,16 +1,36 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 import FolderCard from "./FolderCard.jsx";
 
 export default function FolderGrid({ folders, onOpen }) {
-  const gridRef = useRef(null);
+  const containerRef = useRef(null);
+
+  const groups = useMemo(() => {
+    const map = new Map();
+    folders.forEach((f) => {
+      const cat = (f.category || "Umum").trim() || "Umum";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat).push(f);
+    });
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [folders]);
 
   useEffect(() => {
-    if (gridRef.current && gridRef.current.children.length) {
+    if (!containerRef.current) return;
+    const cards = containerRef.current.querySelectorAll(".folder-card");
+    if (cards.length) {
       gsap.fromTo(
-        gridRef.current.children,
+        cards,
         { y: 18, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.45, ease: "back.out(1.6)", stagger: 0.045 }
+        { y: 0, opacity: 1, duration: 0.45, ease: "back.out(1.6)", stagger: 0.04 }
+      );
+    }
+    const headers = containerRef.current.querySelectorAll(".category-title");
+    if (headers.length) {
+      gsap.fromTo(
+        headers,
+        { x: -12, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.4, ease: "power2.out", stagger: 0.06 }
       );
     }
   }, [folders]);
@@ -31,10 +51,20 @@ export default function FolderGrid({ folders, onOpen }) {
   }
 
   return (
-    <section className="grid" ref={gridRef}>
-      {folders.map((f) => (
-        <FolderCard key={f.id} folder={f} onOpen={onOpen} />
+    <div ref={containerRef}>
+      {groups.map(([category, items]) => (
+        <section className="category-section" key={category}>
+          <h3 className="category-title">
+            {category}
+            <span className="category-count">{items.length}</span>
+          </h3>
+          <div className="grid">
+            {items.map((f) => (
+              <FolderCard key={f.id} folder={f} onOpen={onOpen} />
+            ))}
+          </div>
+        </section>
       ))}
-    </section>
+    </div>
   );
 }

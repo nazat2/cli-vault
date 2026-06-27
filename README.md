@@ -44,6 +44,7 @@ create table public.folders (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   code text default '',
+  category text default 'Umum',
   images jsonb default '[]'::jsonb,
   created_at timestamptz default now()
 );
@@ -65,9 +66,20 @@ create policy "Public update folders"
 create policy "Public delete folders"
   on public.folders for delete
   using (true);
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.folders to anon, authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
 ```
 
 > Rule di atas masih terbuka (siapapun bisa baca/tulis) supaya cepat jalan. Untuk produksi yang lebih aman, tambahkan Supabase Auth lalu ganti `using (true)` jadi cek `auth.uid()`.
+
+**Sudah punya tabel `folders` dari sebelumnya (tanpa kolom kategori)?** Jalankan ini aja, gak perlu bikin ulang dari nol:
+
+```sql
+alter table public.folders add column if not exists category text default 'Umum';
+update public.folders set category = 'Umum' where category is null;
+```
 
 3. Buat **Realtime** aktif untuk tabel ini: sidebar **Database → Replication** → cari tabel `folders` → aktifkan toggle-nya. (Di project baru biasanya sudah otomatis aktif untuk schema `public`.)
 
@@ -161,7 +173,8 @@ cli-vault/
 │  │  ├─ cloudBackend.js      # CRUD ke Supabase (mode CLOUD)
 │  │  ├─ localBackend.js      # CRUD ke localStorage (mode LOCAL)
 │  │  ├─ backends.js          # pemilih backend sesuai mode aktif
-│  │  └─ modeStore.js         # state mode (local/cloud) + pub-sub
+│  │  ├─ modeStore.js         # state mode (local/cloud) + pub-sub
+│  │  └─ watermark.js         # bubuhkan watermark "nazat" ke foto (canvas)
 │  ├─ hooks/
 │  │  ├─ useFolders.js        # subscribe data folder sesuai mode
 │  │  ├─ useMode.js           # hook mode aktif
@@ -188,9 +201,11 @@ cli-vault/
 
 ## Cara Kerja Data
 
-- Setiap folder punya field `name`, `code`, `images` (array `{ url, path }`), `createdAt`.
-- **Mode LOCAL**: semua data + foto (base64) disimpan langsung di `localStorage` key `clivault_local_folders`.
-- **Mode CLOUD**: baris tersimpan di tabel Postgres `folders` (Supabase). Foto disimpan di Supabase Storage bucket `images/{folderId}/{namafile}`, URL publiknya disimpan ke kolom `images`. Pakai Supabase Realtime jadi otomatis sync antar device.
+- Setiap folder punya field `name`, `code`, `category`, `images` (array `{ url, path }`), `createdAt`.
+- **Kategori bebas, tanpa batasan**: ketik nama kategori apa aja saat tambah/edit folder (misal "VLAN", "Routing") — gak perlu dipilih dari daftar tertutup, bisa bikin kategori baru sebanyak yang dibutuhin, dan satu kategori bisa diisi folder sebanyak apapun. Folder yang gak dikategorikan otomatis masuk "Umum". Folder digrupkan per kategori di halaman utama, dan bisa difilter lewat dropdown kategori (Toolbar di desktop, menu ☰ di mobile).
+- **Watermark otomatis**: setiap foto yang diupload (tambah maupun edit folder) otomatis dibubuhi watermark teks "nazat" — pola diagonal tipis berulang di seluruh foto + badge jelas di pojok kanan-bawah. Proses ini terjadi di browser (canvas), sebelum file diupload/disimpan, jadi file yang tersimpan sudah pasti ada watermark-nya. Logic-nya ada di `src/lib/watermark.js`.
+- **Mode LOCAL**: semua data + foto (base64, sudah ber-watermark) disimpan langsung di `localStorage` key `clivault_local_folders`.
+- **Mode CLOUD**: baris tersimpan di tabel Postgres `folders` (Supabase). Foto (sudah ber-watermark) disimpan di Supabase Storage bucket `images/{folderId}/{namafile}`, URL publiknya disimpan ke kolom `images`. Pakai Supabase Realtime jadi otomatis sync antar device.
 - Pindah mode disimpan di `localStorage` key `clivault_mode`, jadi browser bakal "ingat" mode terakhir yang dipakai.
 - Hapus folder di mode CLOUD akan ikut menghapus file-file fotonya dari Storage.
 

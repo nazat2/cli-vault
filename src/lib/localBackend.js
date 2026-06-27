@@ -53,7 +53,7 @@ export function subscribeFolders(onChange) {
 /**
  * Buat folder baru di localStorage. Foto dikonversi ke base64 data URL.
  */
-export async function createFolder({ name, code, files }) {
+export async function createFolder({ name, code, files, category }) {
   const images = [];
   if (files && files.length) {
     for (const file of files) {
@@ -66,6 +66,7 @@ export async function createFolder({ name, code, files }) {
     id: uid(),
     name,
     code: code || "",
+    category: category?.trim() || "Umum",
     images,
     createdAt: Date.now(),
   };
@@ -83,9 +84,9 @@ export async function deleteFolder(folder) {
 }
 
 /**
- * Update folder yang sudah ada: nama, kode, dan foto (foto baru + foto lama yang masih disimpan).
+ * Update folder yang sudah ada: nama, kode, kategori, dan foto (foto baru + foto lama yang masih disimpan).
  */
-export async function updateFolder(id, { name, code, newFiles, keepImages }) {
+export async function updateFolder(id, { name, code, category, newFiles, keepImages }) {
   const list = readAll();
   const idx = list.findIndex((f) => f.id === id);
   if (idx === -1) throw new Error("Folder tidak ditemukan");
@@ -102,6 +103,7 @@ export async function updateFolder(id, { name, code, newFiles, keepImages }) {
     ...list[idx],
     name,
     code: code || "",
+    category: category?.trim() || "Umum",
     images,
   };
   writeAll(list);

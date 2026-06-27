@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { getBackend } from "../lib/backends.js";
 import { supabaseReady } from "../lib/supabase.js";
+import { addWatermark } from "../lib/watermark.js";
 
-export default function AddModal({ open, onClose, onSaved, showToast, mode, editFolder }) {
+const DEFAULT_CATEGORY_SUGGESTIONS = ["Umum", "VLAN", "Routing", "Switching", "ACL", "NAT", "Troubleshooting"];
+
+export default function AddModal({ open, onClose, onSaved, showToast, mode, editFolder, categories }) {
   const boxRef = useRef(null);
   const nameRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -12,21 +15,27 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [category, setCategory] = useState("");
   const [existingImages, setExistingImages] = useState([]); // { url, path } yang sudah tersimpan
   const [removedImages, setRemovedImages] = useState([]); // yang dihapus user saat edit
-  const [newFiles, setNewFiles] = useState([]); // { file, previewUrl } yang baru ditambah
+  const [newFiles, setNewFiles] = useState([]); // { file, previewUrl } yang baru ditambah (sudah ada watermark)
   const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [processingFiles, setProcessingFiles] = useState(false);
   const [nameError, setNameError] = useState(false);
+
+  const categoryOptions = [...new Set([...DEFAULT_CATEGORY_SUGGESTIONS, ...(categories || [])])];
 
   useEffect(() => {
     if (open) {
       setName(editFolder?.name || "");
       setCode(editFolder?.code || "");
+      setCategory(editFolder?.category || "");
       setExistingImages(editFolder?.images ? [...editFolder.images] : []);
       setRemovedImages([]);
       setNewFiles([]);
       setSaving(false);
+      setProcessingFiles(false);
       if (boxRef.current) {
         gsap.fromTo(
           boxRef.current,
@@ -40,10 +49,24 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
 
   if (!open) return null;
 
-  function handleFiles(fileList) {
+  async function handleFiles(fileList) {
     const picked = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
-    const withPreview = picked.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
-    setNewFiles((prev) => [...prev, ...withPreview]);
+    if (!picked.length) return;
+
+    setProcessingFiles(true);
+    try {
+      const results = [];
+      for (const file of picked) {
+        const watermarked = await addWatermark(file);
+        results.push({ file: watermarked, previewUrl: URL.createObjectURL(watermarked) });
+      }
+      setNewFiles((prev) => [...prev, ...results]);
+    } catch (err) {
+      console.error(err);
+      showToast("GAGAL MEMBUBUHKAN WATERMARK, FOTO DILEWATI");
+    } finally {
+      setProcessingFiles(false);
+    }
   }
 
   function removeNewFile(idx) {
@@ -76,11 +99,13 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
     setSaving(true);
     try {
       const backend = getBackend(mode);
+      const finalCategory = category.trim() || "Umum";
 
       if (isEdit) {
         await backend.updateFolder(editFolder.id, {
           name: trimmed,
           code: code.trim(),
+          category: finalCategory,
           newFiles: newFiles.map((f) => f.file),
           keepImages: existingImages,
           removedPaths: removedImages.map((img) => img.path).filter(Boolean),
@@ -90,6 +115,7 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
         await backend.createFolder({
           name: trimmed,
           code: code.trim(),
+          category: finalCategory,
           files: newFiles.map((f) => f.file),
         });
         showToast("FOLDER DISIMPAN");
@@ -132,6 +158,24 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
             style={nameError ? { outline: "3px solid var(--pink)" } : undefined}
           />
 
+          <label className="field-label">KATEGORI</label>
+          <input
+            type="text"
+            className="input"
+            placeholder="cth: VLAN, Routing, Switching... (bebas, bisa bikin baru)"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            list="category-suggestions"
+          />
+          <datalist id="category-suggestions">
+            {categoryOptions.map((c) => (
+              <option value={c} key={c} />
+            ))}
+          </datalist>
+          <p className="field-hint">
+            Kosongkan kalau gak mau dikategorikan (otomatis masuk "Umum"). Bebas bikin kategori baru, gak ada batasan jumlah folder per kategori.
+          </p>
+
           <label className="field-label">KODE CLI</label>
           <textarea
             className="textarea"
@@ -141,6 +185,7 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
           />
 
           <label className="field-label">FOTO (Packet Tracer)</label>
+          <p className="field-hint">Setiap foto otomatis dibubuhi watermark "nazat".</p>
 
           {existingImages.length > 0 && (
             <>
@@ -159,15 +204,15 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
           )}
 
           <div
-            className={`dropzone ${dragging ? "drag" : ""}`}
-            onClick={() => fileInputRef.current?.click()}
-            onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
+            className={`dropzone ${dragging ? "drag" : ""} ${processingFiles ? "is-processing" : ""}`}
+            onClick={() => !processingFiles && fileInputRef.current?.click()}
+            onDragEnter={(e) => { e.preventDefault(); if (!processingFiles) setDragging(true); }}
             onDragOver={(e) => e.preventDefault()}
             onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
             onDrop={(e) => {
               e.preventDefault();
               setDragging(false);
-              if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+              if (!processingFiles && e.dataTransfer.files) handleFiles(e.dataTransfer.files);
             }}
           >
             <input
@@ -176,13 +221,23 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
               accept="image/*"
               multiple
               hidden
+              disabled={processingFiles}
               onChange={(e) => handleFiles(e.target.files)}
             />
             <div className="dropzone-inner">
-              <span className="dz-icon">⇪</span>
-              <p>
-                SERET FOTO KE SINI ATAU <span className="dz-link">PILIH FILE</span>
-              </p>
+              {processingFiles ? (
+                <>
+                  <span className="dz-icon dz-spin">⟳</span>
+                  <p>MEMBUBUHKAN WATERMARK...</p>
+                </>
+              ) : (
+                <>
+                  <span className="dz-icon">⇪</span>
+                  <p>
+                    SERET FOTO KE SINI ATAU <span className="dz-link">PILIH FILE</span>
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -202,7 +257,7 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
             </>
           )}
 
-          <button className="btn btn-save" onClick={handleSave} disabled={saving}>
+          <button className="btn btn-save" onClick={handleSave} disabled={saving || processingFiles}>
             {saving ? "MENYIMPAN..." : isEdit ? "SIMPAN PERUBAHAN" : "SIMPAN FOLDER"}
           </button>
         </div>

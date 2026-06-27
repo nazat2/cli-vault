@@ -23,20 +23,30 @@ export default function App() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
   const [editFolder, setEditFolder] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeFolder, setActiveFolder] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
 
+  // Daftar kategori unik yang sudah pernah dipakai — buat dropdown filter & saran input.
+  // Gak ada batasan: user bebas bikin kategori baru kapan aja lewat form tambah/edit folder.
+  const categories = useMemo(() => {
+    const set = new Set();
+    folders.forEach((f) => set.add((f.category || "Umum").trim() || "Umum"));
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [folders]);
+
   const filtered = useMemo(() => {
     return folders.filter((f) => {
       if (filter === "cli" && !f.code) return false;
       if (filter === "image" && !(f.images && f.images.length)) return false;
+      if (categoryFilter !== "all" && (f.category || "Umum") !== categoryFilter) return false;
       if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [folders, search, filter]);
+  }, [folders, search, filter, categoryFilter]);
 
   function handleModeChange(nextMode) {
     if (nextMode === mode) return;
@@ -44,18 +54,15 @@ export default function App() {
     showToast(nextMode === "cloud" ? "MODE: CLOUD (SUPABASE)" : "MODE: LOCAL (BROWSER)");
   }
 
+  function openAdd() {
+    setEditFolder(null);
+    setAddOpen(true);
+  }
+
   return (
     <>
       <div className="noise" />
-      <Topbar
-        count={folders.length}
-        mode={mode}
-        onAdd={() => {
-          setEditFolder(null);
-          setAddOpen(true);
-        }}
-        onMenu={() => setDrawerOpen(true)}
-      />
+      <Topbar count={folders.length} mode={mode} onAdd={openAdd} onMenu={() => setDrawerOpen(true)} />
 
       <main className="wrap">
         <Hero />
@@ -78,6 +85,9 @@ export default function App() {
           onFilter={setFilter}
           mode={mode}
           onModeChange={handleModeChange}
+          categories={categories}
+          categoryFilter={categoryFilter}
+          onCategoryFilter={setCategoryFilter}
         />
 
         {loading ? (
@@ -102,10 +112,10 @@ export default function App() {
         onModeChange={handleModeChange}
         filter={filter}
         onFilter={setFilter}
-        onAdd={() => {
-          setEditFolder(null);
-          setAddOpen(true);
-        }}
+        categories={categories}
+        categoryFilter={categoryFilter}
+        onCategoryFilter={setCategoryFilter}
+        onAdd={openAdd}
         showToast={showToast}
       />
 
@@ -119,6 +129,7 @@ export default function App() {
         showToast={showToast}
         mode={mode}
         editFolder={editFolder}
+        categories={categories}
       />
 
       <ViewModal
@@ -135,12 +146,7 @@ export default function App() {
         }}
       />
 
-      <Fab
-        onClick={() => {
-          setEditFolder(null);
-          setAddOpen(true);
-        }}
-      />
+      <Fab onClick={openAdd} />
 
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
