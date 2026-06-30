@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 import FolderCard from "./FolderCard.jsx";
+import { categoryColor } from "../lib/categoryColor.js";
 
 export default function FolderGrid({ folders, onOpen }) {
   const containerRef = useRef(null);
@@ -52,19 +53,25 @@ export default function FolderGrid({ folders, onOpen }) {
 
   return (
     <div ref={containerRef}>
-      {groups.map(([category, items]) => (
-        <section className="category-section" key={category}>
-          <h3 className="category-title">
-            {category}
-            <span className="category-count">{items.length}</span>
-          </h3>
-          <div className="grid">
-            {items.map((f) => (
-              <FolderCard key={f.id} folder={f} onOpen={onOpen} />
-            ))}
-          </div>
-        </section>
-      ))}
+      {groups.map(([category, items]) => {
+        const color = categoryColor(category);
+        return (
+          <section className="category-section" key={category}>
+            <h3 className="category-title" style={{ borderBottomColor: color.bg }}>
+              <span className="category-dot" style={{ background: color.bg }} />
+              <span className="category-title-text">{category}</span>
+              <span className="category-count" style={{ background: color.bg, color: color.fg }}>
+                {items.length}
+              </span>
+            </h3>
+            <div className="grid">
+              {items.map((f) => (
+                <FolderCard key={f.id} folder={f} onOpen={onOpen} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

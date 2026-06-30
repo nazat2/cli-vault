@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import MeteorBackground from "./components/MeteorBackground.jsx";
 import Topbar from "./components/Topbar.jsx";
 import Hero from "./components/Hero.jsx";
 import Toolbar from "./components/Toolbar.jsx";
@@ -61,6 +62,7 @@ export default function App() {
 
   return (
     <>
+      <MeteorBackground />
       <div className="noise" />
       <Topbar count={folders.length} mode={mode} onAdd={openAdd} onMenu={() => setDrawerOpen(true)} />
 

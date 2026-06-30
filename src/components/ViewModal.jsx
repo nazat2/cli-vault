@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { getBackend } from "../lib/backends.js";
+import { categoryColor } from "../lib/categoryColor.js";
 
 export default function ViewModal({ folder, onClose, onDeleted, showToast, onImageClick, mode, onEdit }) {
   const boxRef = useRef(null);
@@ -51,6 +52,7 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
 
   const hasCode = Boolean(folder.code);
   const hasImages = folder.images && folder.images.length > 0;
+  const catColor = categoryColor(folder.category);
 
   return (
     <div className="modal-overlay show" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -64,7 +66,9 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
           </div>
           <div className="modal-head-actions">
             <div className="modal-head-badges">
-              <span className="category-badge">{folder.category || "Umum"}</span>
+              <span className="category-badge" style={{ background: catColor.bg, color: catColor.fg }}>
+                {folder.category || "Umum"}
+              </span>
               <span className={`mode-pill ${mode === "cloud" ? "is-cloud" : "is-local"}`}>
                 {mode === "cloud" ? "☁ CLOUD" : "💾 LOCAL"}
               </span>

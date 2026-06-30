@@ -1,3 +1,5 @@
+import { categoryColor } from "../lib/categoryColor.js";
+
 function fmtDate(ts) {
   if (!ts) return "—";
   const date = ts.toDate ? ts.toDate() : new Date(ts);
@@ -7,9 +9,11 @@ function fmtDate(ts) {
 export default function FolderCard({ folder, onOpen }) {
   const hasCode = Boolean(folder.code);
   const imgCount = folder.images?.length || 0;
+  const catColor = categoryColor(folder.category);
 
   return (
     <div className="folder-card" onClick={() => onOpen(folder)}>
+      <div className="folder-stripe" style={{ background: catColor.bg }} />
       <div className="folder-top">
         <span className="folder-icon">📁</span>
         <div className="folder-tags">

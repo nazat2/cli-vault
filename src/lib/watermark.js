@@ -1,6 +1,6 @@
-// Membubuhkan watermark "nazat" ke foto sebelum disimpan:
-// 1. Pola diagonal tipis berulang di seluruh foto (anti-crop/anti-screenshot polos)
-// 2. Badge jelas di pojok kanan-bawah
+// Membubuhkan watermark "nazat" ke foto sebelum disimpan: badge jelas di
+// pojok kanan-bawah (gak ada pola garis diagonal — cukup badge aja, lebih
+// ringan & cepat diproses, terutama di HP).
 //
 // Hasilnya File baru (bukan memodifikasi file asli), siap diupload/disimpan.
 
@@ -50,34 +50,7 @@ export async function addWatermark(file) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  // --- 1. Pola diagonal tipis berulang ---
-  ctx.save();
-  const tileFontSize = Math.max(16, Math.round(canvas.width * 0.04));
-  ctx.font = `700 ${tileFontSize}px 'Space Grotesk', sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
-  ctx.strokeStyle = "rgba(0,0,0,0.14)";
-  ctx.lineWidth = Math.max(1, tileFontSize * 0.05);
-
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(-Math.PI / 8);
-  ctx.translate(-canvas.width / 2, -canvas.height / 2);
-
-  const stepX = tileFontSize * 6.5;
-  const stepY = tileFontSize * 4.5;
-  const diag = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
-  const label = WATERMARK_TEXT.toUpperCase();
-
-  for (let y = -diag; y < diag; y += stepY) {
-    for (let x = -diag; x < diag; x += stepX) {
-      ctx.strokeText(label, x, y);
-      ctx.fillText(label, x, y);
-    }
-  }
-  ctx.restore();
-
-  // --- 2. Badge jelas di pojok kanan-bawah ---
+  // --- Badge jelas di pojok kanan-bawah ---
   const badgeFontSize = Math.max(14, Math.round(canvas.width * 0.032));
   ctx.font = `800 ${badgeFontSize}px 'JetBrains Mono', monospace`;
   const badgeText = `© ${WATERMARK_TEXT}`;
