@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { getBackend } from "../lib/backends.js";
 import { supabaseReady } from "../lib/supabase.js";
-import { addWatermark } from "../lib/watermark.js";
 
 const DEFAULT_CATEGORY_SUGGESTIONS = ["Umum", "VLAN", "Routing", "Switching", "ACL", "NAT", "Troubleshooting"];
 
@@ -18,10 +17,9 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
   const [category, setCategory] = useState("");
   const [existingImages, setExistingImages] = useState([]); // { url, path } yang sudah tersimpan
   const [removedImages, setRemovedImages] = useState([]); // yang dihapus user saat edit
-  const [newFiles, setNewFiles] = useState([]); // { file, previewUrl } yang baru ditambah (sudah ada watermark)
+  const [newFiles, setNewFiles] = useState([]); // { file, previewUrl } yang baru ditambah
   const [dragging, setDragging] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [processingFiles, setProcessingFiles] = useState(false);
   const [nameError, setNameError] = useState(false);
 
   const categoryOptions = [...new Set([...DEFAULT_CATEGORY_SUGGESTIONS, ...(categories || [])])];
@@ -35,7 +33,6 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
       setRemovedImages([]);
       setNewFiles([]);
       setSaving(false);
-      setProcessingFiles(false);
       if (boxRef.current) {
         gsap.fromTo(
           boxRef.current,
@@ -49,24 +46,11 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
 
   if (!open) return null;
 
-  async function handleFiles(fileList) {
+  function handleFiles(fileList) {
     const picked = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
     if (!picked.length) return;
-
-    setProcessingFiles(true);
-    try {
-      const results = [];
-      for (const file of picked) {
-        const watermarked = await addWatermark(file);
-        results.push({ file: watermarked, previewUrl: URL.createObjectURL(watermarked) });
-      }
-      setNewFiles((prev) => [...prev, ...results]);
-    } catch (err) {
-      console.error(err);
-      showToast("GAGAL MEMBUBUHKAN WATERMARK, FOTO DILEWATI");
-    } finally {
-      setProcessingFiles(false);
-    }
+    const results = picked.map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+    setNewFiles((prev) => [...prev, ...results]);
   }
 
   function removeNewFile(idx) {
@@ -185,7 +169,6 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
           />
 
           <label className="field-label">FOTO (Packet Tracer)</label>
-          <p className="field-hint">Setiap foto otomatis dibubuhi watermark "nazat".</p>
 
           {existingImages.length > 0 && (
             <>
@@ -204,15 +187,15 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
           )}
 
           <div
-            className={`dropzone ${dragging ? "drag" : ""} ${processingFiles ? "is-processing" : ""}`}
-            onClick={() => !processingFiles && fileInputRef.current?.click()}
-            onDragEnter={(e) => { e.preventDefault(); if (!processingFiles) setDragging(true); }}
+            className={`dropzone ${dragging ? "drag" : ""}`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
             onDragOver={(e) => e.preventDefault()}
             onDragLeave={(e) => { e.preventDefault(); setDragging(false); }}
             onDrop={(e) => {
               e.preventDefault();
               setDragging(false);
-              if (!processingFiles && e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+              if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
             }}
           >
             <input
@@ -221,23 +204,13 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
               accept="image/*"
               multiple
               hidden
-              disabled={processingFiles}
               onChange={(e) => handleFiles(e.target.files)}
             />
             <div className="dropzone-inner">
-              {processingFiles ? (
-                <>
-                  <span className="dz-icon dz-spin">⟳</span>
-                  <p>MEMBUBUHKAN WATERMARK...</p>
-                </>
-              ) : (
-                <>
-                  <span className="dz-icon">⇪</span>
-                  <p>
-                    SERET FOTO KE SINI ATAU <span className="dz-link">PILIH FILE</span>
-                  </p>
-                </>
-              )}
+              <span className="dz-icon">⇪</span>
+              <p>
+                SERET FOTO KE SINI ATAU <span className="dz-link">PILIH FILE</span>
+              </p>
             </div>
           </div>
 
@@ -257,7 +230,7 @@ export default function AddModal({ open, onClose, onSaved, showToast, mode, edit
             </>
           )}
 
-          <button className="btn btn-save" onClick={handleSave} disabled={saving || processingFiles}>
+          <button className="btn btn-save" onClick={handleSave} disabled={saving}>
             {saving ? "MENYIMPAN..." : isEdit ? "SIMPAN PERUBAHAN" : "SIMPAN FOLDER"}
           </button>
         </div>

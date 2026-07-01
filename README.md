@@ -174,8 +174,8 @@ cli-vault/
 │  │  ├─ localBackend.js      # CRUD ke localStorage (mode LOCAL)
 │  │  ├─ backends.js          # pemilih backend sesuai mode aktif
 │  │  ├─ modeStore.js         # state mode (local/cloud) + pub-sub
-│  │  ├─ watermark.js         # bubuhkan watermark "nazat" ke foto (canvas)
-│  │  └─ categoryColor.js     # warna otomatis & konsisten per kategori
+│  │  ├─ categoryColor.js     # warna otomatis & konsisten per kategori
+│  │  └─ downloadFolder.js    # download folder jadi ZIP (kode CLI + foto)
 │  ├─ hooks/
 │  │  ├─ useFolders.js        # subscribe data folder sesuai mode
 │  │  ├─ useMode.js           # hook mode aktif
@@ -205,12 +205,11 @@ cli-vault/
 
 - Setiap folder punya field `name`, `code`, `category`, `images` (array `{ url, path }`), `createdAt`.
 - **Kategori bebas, tanpa batasan**: ketik nama kategori apa aja saat tambah/edit folder (misal "VLAN", "Routing") — gak perlu dipilih dari daftar tertutup, bisa bikin kategori baru sebanyak yang dibutuhin, dan satu kategori bisa diisi folder sebanyak apapun. Folder yang gak dikategorikan otomatis masuk "Umum". Folder digrupkan per kategori di halaman utama, dan bisa difilter lewat dropdown kategori (Toolbar di desktop, menu ☰ di mobile).
-- **Watermark otomatis**: setiap foto yang diupload (tambah maupun edit folder) otomatis dibubuhi watermark teks "nazat" — badge jelas di pojok kanan-bawah. Proses ini terjadi di browser (canvas), sebelum file diupload/disimpan, jadi file yang tersimpan sudah pasti ada watermark-nya. Ringan, gak ada pola garis berulang biar proses upload tetap cepat. Logic-nya ada di `src/lib/watermark.js`.
 - **Warna kategori otomatis**: setiap kategori dapat warna sendiri (solid, gaya neubrutalism) berdasarkan nama — konsisten, kategori yang sama selalu dapat warna yang sama, tanpa setting manual. Kelihatan di garis strip atas tiap folder card, judul section, dan badge di detail folder.
-- Judul "SIMPAN KODE. SIMPAN BUKTI." di halaman utama pakai efek **typewriter** ngetik-lalu-hapus berulang (loop), dengan kursor blok berkedip + efek kilat kecil flat (gak ada blur/glow) tiap karakter muncul/hilang — ringan, cuma CSS + state React, gak ada canvas/animasi berat, aman dipakai di HP.
+- Judul "SIMPAN KODE. SIMPAN BUKTI." di halaman utama pakai efek **typewriter** ngetik-lalu-hapus berulang (loop), pelan & santai, dengan kursor blok berkedip halus — ringan, cuma CSS + state React, gak ada animasi berat atau efek tambahan, smooth dipakai di HP.
 - **Background hujan meteor**: seluruh halaman punya background animasi bintang berkelip + meteor lewat sesekali, warnanya pakai palet brand (kuning/biru/pink/hijau) dan kepala meteor digambar solid + outline hitam biar tetap nyatu gaya neubrutalism (bukan gaya glow/blur). Dirender 1 canvas fixed di belakang semua konten (`src/components/MeteorBackground.jsx`), maksimal 4 meteor aktif bersamaan biar tetap ringan, dan otomatis berhenti bergerak (cuma tampil statis) kalau pengaturan aksesibilitas "Reduce Motion" di perangkat user aktif.
-- **Mode LOCAL**: semua data + foto (base64, sudah ber-watermark) disimpan langsung di `localStorage` key `clivault_local_folders`.
-- **Mode CLOUD**: baris tersimpan di tabel Postgres `folders` (Supabase). Foto (sudah ber-watermark) disimpan di Supabase Storage bucket `images/{folderId}/{namafile}`, URL publiknya disimpan ke kolom `images`. Pakai Supabase Realtime jadi otomatis sync antar device.
+- **Mode LOCAL**: semua data + foto (base64) disimpan langsung di `localStorage` key `clivault_local_folders`.
+- **Mode CLOUD**: baris tersimpan di tabel Postgres `folders` (Supabase). Foto disimpan di Supabase Storage bucket `images/{folderId}/{namafile}`, URL publiknya disimpan ke kolom `images`. Pakai Supabase Realtime jadi otomatis sync antar device.
 - Pindah mode disimpan di `localStorage` key `clivault_mode`, jadi browser bakal "ingat" mode terakhir yang dipakai.
 - Hapus folder di mode CLOUD akan ikut menghapus file-file fotonya dari Storage.
 
@@ -225,6 +224,7 @@ cli-vault/
 ## Catatan
 
 - Klik tombol **COPY** di kode CLI untuk menyalin ke clipboard.
+- Klik tombol **↓ DOWNLOAD FOLDER** di detail folder untuk mendownload isi folder sebagai file ZIP — berisi `kode-cli.txt` (isi kode CLI) dan folder `foto/` (semua foto). Ada progress bar kecil di tombol saat proses download berlangsung.
 - Klik ✏️ di detail folder untuk **edit** (ubah nama, kode CLI, hapus/tambah foto) tanpa perlu hapus & buat folder baru.
 - Klik foto di detail folder untuk lihat ukuran penuh (lightbox).
 - Search & filter (Semua / CLI / Foto) bekerja secara real-time di sisi client.

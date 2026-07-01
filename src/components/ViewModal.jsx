@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { getBackend } from "../lib/backends.js";
 import { categoryColor } from "../lib/categoryColor.js";
+import { downloadFolderAsZip } from "../lib/downloadFolder.js";
 
 export default function ViewModal({ folder, onClose, onDeleted, showToast, onImageClick, mode, onEdit }) {
   const boxRef = useRef(null);
   const [copyLabel, setCopyLabel] = useState("COPY");
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [dlProgress, setDlProgress] = useState(0);
 
   useEffect(() => {
     if (folder && boxRef.current) {
@@ -16,6 +19,8 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
         { y: 0, opacity: 1, scale: 1, duration: 0.35, ease: "power3.out" }
       );
       setCopyLabel("COPY");
+      setDownloading(false);
+      setDlProgress(0);
     }
   }, [folder]);
 
@@ -50,6 +55,27 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
     }
   }
 
+  async function handleDownload() {
+    if (downloading) return;
+    const hasContent = Boolean(folder.code) || (folder.images && folder.images.length > 0);
+    if (!hasContent) {
+      showToast("FOLDER INI KOSONG, TIDAK ADA YANG BISA DIDOWNLOAD");
+      return;
+    }
+    setDownloading(true);
+    setDlProgress(0);
+    try {
+      await downloadFolderAsZip(folder, (pct) => setDlProgress(pct));
+      showToast("FOLDER BERHASIL DIDOWNLOAD");
+    } catch (err) {
+      console.error(err);
+      showToast("GAGAL MENDOWNLOAD — COBA LAGI");
+    } finally {
+      setDownloading(false);
+      setDlProgress(0);
+    }
+  }
+
   const hasCode = Boolean(folder.code);
   const hasImages = folder.images && folder.images.length > 0;
   const catColor = categoryColor(folder.category);
@@ -60,9 +86,7 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
         <div className="modal-head modal-head-stack">
           <div className="modal-head-top">
             <h2>{folder.name}</h2>
-            <button className="btn-close" onClick={onClose}>
-              ✕
-            </button>
+            <button className="btn-close" onClick={onClose}>✕</button>
           </div>
           <div className="modal-head-actions">
             <div className="modal-head-badges">
@@ -83,7 +107,30 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
             </div>
           </div>
         </div>
+
         <div className="modal-body">
+          {/* Tombol Download */}
+          <button
+            className={`btn-download ${downloading ? "is-loading" : ""}`}
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <>
+                <span className="dl-spinner" />
+                <span>MENGUNDUH... {dlProgress > 0 ? `${dlProgress}%` : ""}</span>
+              </>
+            ) : (
+              <>
+                <span className="dl-icon">↓</span>
+                <span>DOWNLOAD FOLDER</span>
+              </>
+            )}
+            {downloading && dlProgress > 0 && (
+              <span className="dl-progress-bar" style={{ width: `${dlProgress}%` }} />
+            )}
+          </button>
+
           {hasCode && (
             <div className="view-section">
               <div className="code-head">
@@ -99,20 +146,18 @@ export default function ViewModal({ folder, onClose, onDeleted, showToast, onIma
           {hasImages && (
             <div className="view-section">
               <div className="code-head">
-                <span>FOTO</span>
+                <span>FOTO ({folder.images.length})</span>
               </div>
               <div className="view-img-grid">
                 {folder.images.map((img, i) => (
-                  <img key={i} src={img.url} alt={`foto-${i}`} onClick={() => onImageClick(img.url)} />
+                  <img key={i} src={img.url} alt={`foto-${i + 1}`} onClick={() => onImageClick(img.url)} />
                 ))}
               </div>
             </div>
           )}
 
           {!hasCode && !hasImages && (
-            <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "#777" }}>
-              Folder ini kosong.
-            </p>
+            <p className="empty-folder-text">Folder ini kosong.</p>
           )}
         </div>
       </div>
